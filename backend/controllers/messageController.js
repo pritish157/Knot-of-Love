@@ -38,6 +38,36 @@ exports.sendMessage = async (req, res, next) => {
     text:       text.trim()
   });
 
+  try {
+    const { getIo, getConnectedUserSocket } = require("../sockets/chatSocket");
+    const io = getIo();
+    
+    // Broadcast to the match room
+    io.to(`match_${matchId}`).emit("new_message", message);
+    
+    // Alternatively, emit directly to the receiver if they are not in the room
+    const receiverSocket = getConnectedUserSocket(receiverId);
+    if (receiverSocket) {
+      io.to(receiverSocket).emit("new_message_alert", message);
+    }
+
+    // ── Real-time Notification ───────────────────────────────────────────────
+    const { createAndEmitNotification } = require("../utils/notificationUtility");
+    const sender = await require("../models/User").findById(req.user.id).select("name");
+    await createAndEmitNotification({
+      receiverId,
+      senderId: req.user.id,
+      type: "NEW_MESSAGE",
+      matchId,
+      title: "New Message",
+      body: `New message from ${sender.name}`,
+      actionUrl: "/chat"
+    });
+
+  } catch (err) {
+    // Socket might not be initialized in test environments
+  }
+
   res.status(201).json({ success: true, message });
 };
 

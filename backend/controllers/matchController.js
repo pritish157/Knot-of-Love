@@ -6,6 +6,7 @@ const Preference = require("../models/Preference");
 const AppError   = require("../utils/AppError");
 const sendEmail  = require("../utils/sendEmail");
 const logger     = require("../utils/logger");
+const { createAndEmitNotification } = require("../utils/notificationUtility");
 
 // ─── Helper: format image URL ─────────────────────────────────────────────────
 function fmtImage(img) {
@@ -50,7 +51,7 @@ exports.requestMatch = async (req, res, next) => {
           <p>Hi <strong>${receiver.name}</strong>,</p>
           <p><strong>${sender.name}</strong> (Member ID: ${sender.memberId}) has expressed interest in your profile.</p>
           <p>Log in to your dashboard to view their full profile and respond.</p>
-          <a href="${process.env.CLIENT_URL || "http://localhost:5173"}/dashboard"
+          <a href="${(process.env.CLIENT_URL || "http://localhost:5173").split(",")[0].trim()}/dashboard"
              style="display:inline-block;margin-top:16px;padding:12px 24px;background:#c22d45;color:white;border-radius:8px;text-decoration:none;font-weight:700">
             View Interest →
           </a>
@@ -60,6 +61,17 @@ exports.requestMatch = async (req, res, next) => {
   } catch (e) {
     logger.warn(`[MATCH] Email notification failed for ${receiver.email}: ${e.message}`);
   }
+
+  // ── Real-time Notification ───────────────────────────────────────────────
+  await createAndEmitNotification({
+    receiverId: targetUserId,
+    senderId,
+    type: "INTEREST_RECEIVED",
+    matchId: match._id,
+    title: "New Interest Received",
+    body: `${sender.name} expressed interest in your profile.`,
+    actionUrl: "/dashboard" // Or wherever incoming matches live
+  });
 
   res.status(201).json({ success: true, message: "Interest request sent successfully", match });
 };
@@ -108,7 +120,7 @@ exports.respondMatch = async (req, res, next) => {
             <p>Hi <strong>${sender.name}</strong>,</p>
             <p><strong>${receiver.name}</strong> has accepted your interest on Knot of Love!</p>
             <p>You can now exchange messages and share details.</p>
-            <a href="${process.env.CLIENT_URL || "http://localhost:5173"}/dashboard"
+            <a href="${(process.env.CLIENT_URL || "http://localhost:5173").split(",")[0].trim()}/dashboard"
                style="display:inline-block;margin-top:16px;padding:12px 24px;background:#065f46;color:white;border-radius:8px;text-decoration:none;font-weight:700">
               Start Conversation →
             </a>
@@ -118,6 +130,17 @@ exports.respondMatch = async (req, res, next) => {
     } catch (e) {
       logger.warn(`[MATCH] Acceptance email failed: ${e.message}`);
     }
+
+    // ── Real-time Notification ───────────────────────────────────────────────
+    await createAndEmitNotification({
+      receiverId: match.senderId,
+      senderId: match.receiverId,
+      type: "MATCH_ACCEPTED",
+      matchId: match._id,
+      title: "Interest Accepted!",
+      body: `${receiver.name} has accepted your interest.`,
+      actionUrl: "/chat"
+    });
   }
 
   res.json({ success: true, message: `Interest ${status.toLowerCase()} successfully`, status });
@@ -132,7 +155,8 @@ exports.getMatches = async (req, res, next) => {
     $or: [
       { senderId: req.user.id, status: "Accepted" },
       { receiverId: req.user.id, status: "Accepted" }
-    ]
+    ],
+    archivedBy: { $ne: req.user.id }
   }).lean();
 
   const otherIds = matches.map(m =>
@@ -284,13 +308,21 @@ exports.getRecommended = async (req, res, next) => {
   const viewer = await User.findById(req.user.id);
   if (!viewer) return next(new AppError("User not found.", 404));
 
-  const [viewerProfile, viewerPrefs] = await Promise.all([
+  const [viewerProfile, viewerPrefs, existingMatches] = await Promise.all([
     Profile.findOne({ userId: viewer._id }).lean(),
-    Preference.findOne({ userId: viewer._id }).lean()
+    Preference.findOne({ userId: viewer._id }).lean(),
+    Match.find({
+      $or: [{ senderId: viewer._id }, { receiverId: viewer._id }]
+    }).select("senderId receiverId").lean()
   ]);
 
+  const excludeIds = existingMatches.map(m => 
+    m.senderId.toString() === viewer._id.toString() ? m.receiverId : m.senderId
+  );
+  excludeIds.push(viewer._id);
+
   const userFilter = {
-    _id: { $ne: viewer._id },
+    _id: { $nin: excludeIds },
     gender: viewer.gender === "Male" ? "Female" : "Male",
     isEmailVerified: true,
     isProfileComplete: true
@@ -350,4 +382,102 @@ exports.getRecommended = async (req, res, next) => {
 
   recommendations.sort((a, b) => b.matchScore - a.matchScore || b.trustScore - a.trustScore);
   res.json({ success: true, count: recommendations.length, profiles: recommendations.slice(0, 30) });
+};
+
+/**
+ * POST /api/matches/unmatch/:matchId
+ * Unmatch an already accepted match.
+ */
+exports.unmatchUser = async (req, res, next) => {
+  const match = await Match.findById(req.params.matchId);
+  if (!match) return next(new AppError("Match not found", 404));
+
+  const me = req.user.id;
+  if (match.senderId.toString() !== me && match.receiverId.toString() !== me) {
+    return next(new AppError("You are not part of this match", 403));
+  }
+
+  match.status = "Unmatched";
+  match.actionDate = Date.now();
+  await match.save();
+
+  res.json({ success: true, message: "Unmatched successfully" });
+};
+
+/**
+ * POST /api/matches/block/:matchId
+ * Block a user you have interacted with.
+ */
+exports.blockUser = async (req, res, next) => {
+  const match = await Match.findById(req.params.matchId);
+  if (!match) return next(new AppError("Match not found", 404));
+
+  const me = req.user.id;
+  if (match.senderId.toString() !== me && match.receiverId.toString() !== me) {
+    return next(new AppError("You are not part of this match", 403));
+  }
+
+  match.status = "Blocked";
+  match.blockedBy = me;
+  match.actionDate = Date.now();
+  await match.save();
+
+  res.json({ success: true, message: "User blocked" });
+};
+
+/**
+ * POST /api/matches/archive/:matchId
+ * Archive a conversation so it doesn't show in the active list.
+ */
+exports.archiveMatch = async (req, res, next) => {
+  const match = await Match.findById(req.params.matchId);
+  if (!match) return next(new AppError("Match not found", 404));
+
+  const me = req.user.id;
+  if (match.senderId.toString() !== me && match.receiverId.toString() !== me) {
+    return next(new AppError("You are not part of this match", 403));
+  }
+
+  if (!match.archivedBy.includes(me)) {
+    match.archivedBy.push(me);
+    await match.save();
+  }
+
+  res.json({ success: true, message: "Conversation archived" });
+};
+
+/**
+ * POST /api/matches/report/:matchId
+ * Report a user.
+ */
+exports.reportUser = async (req, res, next) => {
+  const { reason } = req.body;
+  if (!reason) return next(new AppError("Reason is required", 400));
+
+  const match = await Match.findById(req.params.matchId);
+  if (!match) return next(new AppError("Match not found", 404));
+
+  const me = req.user.id;
+  if (match.senderId.toString() !== me && match.receiverId.toString() !== me) {
+    return next(new AppError("You are not part of this match", 403));
+  }
+
+  const reportedUserId = match.senderId.toString() === me ? match.receiverId : match.senderId;
+
+  // Log to AdminLog — `admin` = reporter (user who filed the report), `targetUser` = reported user
+  const AdminLog = require("../models/AdminLog");
+  await AdminLog.create({
+    action:     "USER_REPORTED",
+    admin:      me,               // reporter
+    targetUser: reportedUserId,   // the person being reported
+    metadata:   { reason, matchId: match._id }
+  });
+
+  // Also block the user implicitly for safety
+  match.status = "Blocked";
+  match.blockedBy = me;
+  match.actionDate = Date.now();
+  await match.save();
+
+  res.json({ success: true, message: "User reported and blocked successfully." });
 };

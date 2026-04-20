@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { getProfileImageSrc, handleImageError } from "../utils/image";
+import NotificationBell from "../components/NotificationBell";
 
 function NavLink({ to, label, pathname }) {
   const active = pathname === to;
@@ -45,13 +46,17 @@ export default function DashboardLayout() {
         <nav className="flex flex-wrap items-center gap-2">
           <NavLink to="/dashboard" label="Dashboard" pathname={pathname} />
           <NavLink to="/profiles" label="Discovery" pathname={pathname} />
+          <NavLink to="/chat" label="Chat" pathname={pathname} />
           <NavLink to="/onboarding" label="Edit Profile" pathname={pathname} />
           <NavLink to="/kyc" label="Verify" pathname={pathname} />
         </nav>
 
-        <button type="button" className="btn-ghost w-full sm:w-auto" onClick={handleLogout}>
-          Log out
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button type="button" className="btn-ghost w-full sm:w-auto" onClick={handleLogout}>
+            Log out
+          </button>
+        </div>
       </header>
 
       <div className="page-fade">

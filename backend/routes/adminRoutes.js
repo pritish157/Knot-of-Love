@@ -10,7 +10,9 @@ const {
   approveUser,
   rejectUser,
   getMembers,
-  getActivity
+  getActivity,
+  getReports,
+  flagUser
 } = require("../controllers/adminController");
 
 // ── Public route (no auth) ────────────────────────────────────────────────────
@@ -25,7 +27,9 @@ router.get("/stats",          getStats);
 router.get("/pending-users",  getPendingUsers);
 router.get("/members",        getMembers);
 router.get("/activity",       getActivity);
+router.get("/reports",        getReports);
 router.post("/approve",       approveUser);
 router.post("/reject",        rejectUser);
+router.post("/flag/:userId",  flagUser);
 
 module.exports = router;

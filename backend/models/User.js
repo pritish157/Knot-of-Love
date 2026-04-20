@@ -48,12 +48,17 @@ const UserSchema = new mongoose.Schema(
     onboardingStep: { type: Number, default: 1, min: 1, max: 12 },
     profileViews: { type: Number, default: 0 },
 
+    // ─── Admin Moderation ──────────────────────────────────────────────────────
+    isFlagged: { type: Boolean, default: false },          // Fake / suspicious profile flag
+    flagReason: { type: String, default: "", trim: true }, // Reason set by admin
+
     // Unique member ID (KOL-00001 format)
     memberId: { type: String, unique: true, sparse: true },
 
-    // ─── Password Reset ────────────────────────────────────────────────────────
+    // ─── Password Reset & Security ─────────────────────────────────────────────
     resetPasswordToken: { type: String, select: false },
-    resetPasswordExpires: { type: Date, select: false }
+    resetPasswordExpires: { type: Date, select: false },
+    tokenVersion: { type: Number, default: 0 }
   },
   { timestamps: true }
 );
@@ -61,6 +66,7 @@ const UserSchema = new mongoose.Schema(
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 UserSchema.index({ gender: 1, isEmailVerified: 1, isProfileComplete: 1 });
 UserSchema.index({ trustScore: -1, createdAt: -1 });
+UserSchema.index({ isFlagged: 1 }); // Admin: quickly query suspected fake profiles
 
 // ─── Generate memberId before save ──────────────────────────────────────────
 UserSchema.pre("save", async function (next) {

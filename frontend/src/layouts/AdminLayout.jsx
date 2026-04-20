@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: "/admin",          label: "Overview",      icon: "📊", end: true },
   { to: "/admin/members",  label: "Members",       icon: "👥" },
   { to: "/admin/kyc",      label: "KYC Approvals", icon: "🔍" },
+  { to: "/admin/reports",  label: "Reports",       icon: "🚩" },
   { to: "/admin/activity", label: "Activity Log",  icon: "📋" },
 ];
 

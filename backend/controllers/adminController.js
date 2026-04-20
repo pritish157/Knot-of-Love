@@ -3,6 +3,7 @@ const User     = require("../models/User");
 const Document = require("../models/Document");
 const AdminLog = require("../models/AdminLog");
 const Profile  = require("../models/Profile");
+const Match    = require("../models/Match");
 const AppError = require("../utils/AppError");
 const logger   = require("../utils/logger");
 
@@ -200,4 +201,105 @@ exports.rejectUser = async (req, res, next) => {
 
   logger.info(`[ADMIN] User ${doc.userId} rejected by Admin ${req.user.id}. Reason: ${reason}`);
   res.json({ success: true, message: "User successfully rejected", reason });
+};
+
+/**
+ * GET /api/admin/reports?page&limit
+ * Lists all USER_REPORTED entries from the audit log with full reporter
+ * and reported-user details. Sorted newest-first.
+ */
+exports.getReports = async (req, res, next) => {
+  const { page = 1, limit = 20 } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const filter = { action: "USER_REPORTED" };
+
+  const [logs, total] = await Promise.all([
+    AdminLog.find(filter)
+      .populate("targetUser", "name email memberId isFlagged trustScore isProfileVerified")
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean(),
+    AdminLog.countDocuments(filter)
+  ]);
+
+  // Enrich each log entry with the reporter identity
+  // adminId field was repurposed as reporterId in matchController.reportUser
+  const reporterIds = logs.map(l => l.admin);
+  const reporters = await User.find({ _id: { $in: reporterIds } })
+    .select("name email memberId")
+    .lean();
+  const reporterMap = {};
+  for (const r of reporters) reporterMap[r._id.toString()] = r;
+
+  const enriched = logs.map(l => ({
+    _id:        l._id,
+    reportedAt: l.createdAt,
+    reason:     l.details || (l.metadata?.reason) || "",
+    reporter:   reporterMap[l.admin?.toString()] || null,
+    reported:   l.targetUser || null
+  }));
+
+  res.json({
+    success: true,
+    reports: enriched,
+    total,
+    page:  parseInt(page),
+    pages: Math.ceil(total / parseInt(limit))
+  });
+};
+
+/**
+ * POST /api/admin/flag/:userId
+ * Toggle fake-profile flag on a user.
+ * Body: { flagReason: string } — pass empty string to unflag.
+ */
+exports.flagUser = async (req, res, next) => {
+  const { userId } = req.params;
+  const { flagReason = "" } = req.body;
+
+  const user = await User.findById(userId);
+  if (!user) return next(new AppError("User not found.", 404));
+  if (user.role === "Admin") return next(new AppError("Cannot flag an admin account.", 403));
+
+  const wasFlagged = user.isFlagged;
+  user.isFlagged  = !wasFlagged;                       // toggle
+  user.flagReason = user.isFlagged ? flagReason.trim() : "";
+
+  // Lower trust score aggressively when flagging; restore base when clearing
+  if (user.isFlagged) {
+    user.trustScore = Math.max(0, user.trustScore - 40);
+  } else {
+    const profile = await Profile.findOne({ userId: user._id });
+    user.trustScore = user.calculateTrustScore(profile);
+  }
+
+  await user.save();
+
+  await AdminLog.create({
+    admin:      req.user.id,
+    action:     user.isFlagged ? "FLAG_USER" : "UNFLAG_USER",
+    targetUser: user._id,
+    metadata:   { flagReason: user.flagReason }
+  });
+
+  // Also flag / unblock any matches involving this user if flagged
+  if (user.isFlagged) {
+    await Match.updateMany(
+      {
+        $or: [{ senderId: user._id }, { receiverId: user._id }],
+        status: { $nin: ["Blocked", "Rejected"] }
+      },
+      { status: "Blocked", blockedBy: user._id }
+    );
+  }
+
+  logger.warn(`[ADMIN] User ${userId} ${user.isFlagged ? "FLAGGED" : "UNFLAGGED"} by Admin ${req.user.id}`);
+  res.json({
+    success: true,
+    message: `User ${user.isFlagged ? "flagged" : "unflagged"} successfully.`,
+    isFlagged:  user.isFlagged,
+    flagReason: user.flagReason
+  });
 };

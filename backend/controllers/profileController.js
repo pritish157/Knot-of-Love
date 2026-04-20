@@ -24,9 +24,20 @@ exports.getProfiles = async (req, res, next) => {
     page = 1, limit = 20
   } = req.query;
 
+  // Fetch all matches to exclude people we've already interacted with
+  const Match = require("../models/Match");
+  const existingMatches = await Match.find({
+    $or: [{ senderId: req.user.id }, { receiverId: req.user.id }]
+  }).select("senderId receiverId").lean();
+
+  const excludeIds = existingMatches.map(m => 
+    m.senderId.toString() === req.user.id ? m.receiverId : m.senderId
+  );
+  excludeIds.push(req.user.id);
+
   // ── User-level filters ────────────────────────────────────────────────────
   const userFilter = {
-    _id: { $ne: req.user.id },
+    _id: { $nin: excludeIds },
     isEmailVerified: true,
     isProfileComplete: true
   };

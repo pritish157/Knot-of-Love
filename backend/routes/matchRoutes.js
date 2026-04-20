@@ -9,7 +9,11 @@ const {
   getMatches,
   getIncoming,
   getSent,
-  withdrawMatch
+  withdrawMatch,
+  unmatchUser,
+  blockUser,
+  archiveMatch,
+  reportUser
 } = require("../controllers/matchController");
 
 router.use(protect);
@@ -21,5 +25,11 @@ router.get("/sent",      getSent);
 router.post("/request",  requestMatch);
 router.post("/respond",  respondMatch);
 router.delete("/withdraw/:matchId", withdrawMatch);
+
+// Match Management Routes
+router.post("/unmatch/:matchId", unmatchUser);
+router.post("/block/:matchId", blockUser);
+router.post("/archive/:matchId", archiveMatch);
+router.post("/report/:matchId", reportUser);
 
 module.exports = router;

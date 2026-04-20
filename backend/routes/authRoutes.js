@@ -9,7 +9,8 @@ const { photoUpload } = require("../middleware/upload");
 const {
   register, sendOTP, verifyOTP, login,
   saveOnboardingStep, getMe, uploadProfilePhoto,
-  forgotPassword, resetPassword, getConstants, deleteAccount
+  forgotPassword, resetPassword, getConstants, deleteAccount,
+  changePassword, logoutAll
 } = require("../controllers/authController");
 
 // ─── Auth-specific rate limiter ──────────────────────────────────────────────
@@ -61,6 +62,8 @@ router.post("/reset-password", authLimiter, resetPassword);
 router.get("/me", protect, getMe);
 router.patch("/onboarding", protect, saveOnboardingStep);
 router.post("/upload-photo", protect, photoUpload.single("image"), uploadProfilePhoto);
+router.post("/change-password", protect, changePassword);
+router.post("/logout-all", protect, logoutAll);
 router.delete("/account", protect, deleteAccount);
 
 module.exports = router;

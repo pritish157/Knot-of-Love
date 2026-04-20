@@ -30,11 +30,15 @@ module.exports = async function protect(req, _res, next) {
 
     // Load user from DB to get fresh role, verification status, and gender
     const user = await User.findById(decoded.user.id).select(
-      "role isEmailVerified isPhoneVerified isProfileVerified trustScore gender"
+      "role isEmailVerified isPhoneVerified isProfileVerified trustScore gender tokenVersion"
     );
 
     if (!user) {
       return next(new AppError("User no longer exists.", 401));
+    }
+
+    if (user.tokenVersion !== decoded.user.tv) {
+      return next(new AppError("Session invalidated. Please sign in again.", 401));
     }
 
     req.user = {

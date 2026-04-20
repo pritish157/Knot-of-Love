@@ -19,9 +19,18 @@ const MatchSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Pending", "Accepted", "Rejected", "Blocked"],
+      enum: ["Pending", "Accepted", "Rejected", "Blocked", "Unmatched"],
       default: "Pending"
     },
+    blockedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null
+    },
+    archivedBy: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }],
     actionDate: { type: Date, default: Date.now }
   },
   { timestamps: true }

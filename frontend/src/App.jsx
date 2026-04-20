@@ -16,6 +16,7 @@ const ProfilesPage       = lazy(() => import("./pages/ProfilesPage"));
 const VerifyOtpPage      = lazy(() => import("./pages/VerifyOtpPage"));
 const OnboardingPage     = lazy(() => import("./pages/OnboardingPage"));
 const KycPage            = lazy(() => import("./pages/KycPage"));
+const ChatPage           = lazy(() => import("./pages/ChatPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
 const NotFoundPage       = lazy(() => import("./pages/NotFoundPage"));
 const StaticPage         = lazy(() => import("./pages/StaticPage"));
@@ -24,6 +25,7 @@ const StaticPage         = lazy(() => import("./pages/StaticPage"));
 const AdminOverview     = lazy(() => import("./pages/admin/AdminOverview"));
 const AdminMembers      = lazy(() => import("./pages/admin/AdminMembers"));
 const AdminKYC          = lazy(() => import("./pages/admin/AdminKYC"));
+const AdminReports      = lazy(() => import("./pages/admin/AdminReports"));
 const AdminActivityLog  = lazy(() => import("./pages/admin/AdminActivityLog"));
 
 export default function App() {
@@ -59,6 +61,7 @@ export default function App() {
             <Route path="/admin"             element={<AdminOverview />} />
             <Route path="/admin/members"     element={<AdminMembers />} />
             <Route path="/admin/kyc"         element={<AdminKYC />} />
+            <Route path="/admin/reports"     element={<AdminReports />} />
             <Route path="/admin/activity"    element={<AdminActivityLog />} />
           </Route>
 
@@ -76,6 +79,7 @@ export default function App() {
             <Route path="/profiles"   element={<ProfilesPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/kyc"        element={<KycPage />} />
+            <Route path="/chat"       element={<ChatPage />} />
           </Route>
 
           {/* ── 404 ────────────────────────────────────────────────────────── */}

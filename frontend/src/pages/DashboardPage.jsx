@@ -57,6 +57,51 @@ export default function DashboardPage() {
   const { matches, loadingMatches } = useActiveMatches();
   const [incomingCount, setIncomingCount] = useState(0);
 
+  // ── Account Security State ───────────────────────────────────────────────
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  const [showLogoutAllModal, setShowLogoutAllModal] = useState(false);
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      return showToast("New passwords do not match", "error");
+    }
+    setUpdatingPassword(true);
+    try {
+      await apiRequest("/api/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      });
+      showToast("Password updated successfully", "success");
+      setShowPasswordModal(false);
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setUpdatingPassword(false);
+    }
+  }
+
+  async function handleLogoutAll() {
+    setLoggingOutAll(true);
+    try {
+      await apiRequest("/api/auth/logout-all", { method: "POST" });
+      logout();
+      navigate("/login");
+    } catch (err) {
+      showToast(err.message, "error");
+      setLoggingOutAll(false);
+      setShowLogoutAllModal(false);
+    }
+  }
+
   // ── Photo upload state ────────────────────────────────────────────────────
   const { uploadPhoto, uploading: uploadingPhoto } = usePhotoUpload();
   const photoInputRef = useRef(null);
@@ -310,7 +355,28 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {/* ✅ Delete Account option */}
+            {/* Account Security Options */}
+            <div className="mt-6 border-t border-ink/10 pt-4">
+              <h3 className="text-sm font-bold text-ink mb-3">Security & Access</h3>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(true)}
+                  className="text-left text-sm font-bold text-brand-600 transition hover:text-brand-800"
+                >
+                  Change Password
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutAllModal(true)}
+                  className="text-left text-sm font-bold text-amber-600 transition hover:text-amber-700"
+                >
+                  Logout from all devices
+                </button>
+              </div>
+            </div>
+
+            {/* Delete Account option */}
             <div className="mt-6 border-t border-red-100 pt-4">
               <button
                 type="button"
@@ -379,6 +445,93 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ──── CHANGE PASSWORD MODAL ───────────────────────────────────────────── */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            onClick={() => { setShowPasswordModal(false); setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); }}
+          />
+          <div className="surface-card relative z-10 w-full max-w-md p-8 shadow-2xl">
+            <h2 className="font-serif text-2xl text-ink mb-6">Change Password</h2>
+            <form className="space-y-4" onSubmit={handleChangePassword}>
+              <PasswordField
+                id="current-password"
+                label="Current Password"
+                value={passwordForm.currentPassword}
+                onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                placeholder="Enter current password"
+              />
+              <PasswordField
+                id="new-password"
+                label="New Password"
+                value={passwordForm.newPassword}
+                onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                placeholder="Enter new password (min 8 chars)"
+              />
+              <PasswordField
+                id="confirm-password"
+                label="Confirm New Password"
+                value={passwordForm.confirmPassword}
+                onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                placeholder="Re-enter new password"
+              />
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowPasswordModal(false); setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); }}
+                  className="btn-secondary flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                  className="btn-primary flex-1 disabled:opacity-50"
+                >
+                  {updatingPassword ? <Spinner className="h-4 w-4 border-white border-t-transparent" /> : "Update"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ──── LOGOUT ALL DEVICES MODAL ───────────────────────────────────────────── */}
+      {showLogoutAllModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            onClick={() => setShowLogoutAllModal(false)}
+          />
+          <div className="surface-card relative z-10 w-full max-w-sm p-8 shadow-2xl text-center">
+            <h2 className="font-serif text-2xl text-ink mb-3">Logout from all devices?</h2>
+            <p className="text-sm text-muted mb-6">
+              This will invalidate all your active sessions, including this one. You will need to log back in.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLogoutAllModal(false)}
+                className="btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleLogoutAll}
+                disabled={loggingOutAll}
+                className="btn-primary flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 !shadow-amber-500/30"
+              >
+                {loggingOutAll ? <Spinner className="h-4 w-4 border-white border-t-transparent" /> : "Yes, Logout"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -16,8 +16,8 @@ const { uploadToImageKit } = require("../utils/imagekit");
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function signToken(userId) {
-  return jwt.sign({ user: { id: userId } }, process.env.JWT_SECRET, {
+function signToken(user) {
+  return jwt.sign({ user: { id: user._id || user.id, tv: user.tokenVersion || 0 } }, process.env.JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
     algorithm: "HS256"
   });
@@ -221,7 +221,7 @@ exports.verifyOTP = async (req, res, next) => {
   await OTP.deleteOne({ _id: otpDoc._id });
 
   // Auto-login after verification
-  const token = signToken(user._id);
+  const token = signToken(user);
   const payload = await buildUserPayload(user);
 
   res.json({ success: true, message: "Email verified successfully.", token, user: payload });
@@ -240,7 +240,7 @@ exports.login = async (req, res, next) => {
     return next(new AppError("Please verify your email before logging in.", 403));
   }
 
-  const token = signToken(user._id);
+  const token = signToken(user);
 
   // Fetch match stats
   const [matchesReceived, matchesAccepted] = await Promise.all([
@@ -513,4 +513,34 @@ exports.deleteAccount = async (req, res, next) => {
 
   logger.info(`[AUTH] Account permanently deleted: ${userId}`);
   res.json({ success: true, message: "Your account and all associated data have been permanently deleted." });
+};
+
+// ─── POST /api/auth/change-password ──────────────────────────────────────────
+exports.changePassword = async (req, res, next) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return next(new AppError("Please provide both passwords.", 400));
+  if (newPassword.length < 8) return next(new AppError("New password must be at least 8 characters.", 400));
+
+  const user = await User.findById(req.user.id).select("+password tokenVersion");
+  if (!user) return next(new AppError("User not found.", 404));
+
+  const isMatch = await user.comparePassword(currentPassword);
+  if (!isMatch) return next(new AppError("Incorrect current password.", 401));
+
+  user.password = newPassword;
+  await user.save();
+
+  res.json({ success: true, message: "Password updated successfully." });
+};
+
+// ─── POST /api/auth/logout-all ───────────────────────────────────────────────
+exports.logoutAll = async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  if (!user) return next(new AppError("User not found.", 404));
+
+  // Increment tokenVersion to invalidate all existing tokens
+  user.tokenVersion += 1;
+  await user.save();
+
+  res.json({ success: true, message: "Logged out from all devices." });
 };

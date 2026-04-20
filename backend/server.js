@@ -133,6 +133,7 @@ app.use("/api/profiles", require("./routes/profileRoutes"));
 app.use("/api/kyc",      require("./routes/kycRoutes"));
 app.use("/api/matches",  require("./routes/matchRoutes"));
 app.use("/api/messages", require("./routes/messageRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/admin",    require("./routes/adminRoutes"));
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
@@ -148,12 +149,17 @@ app.use((_req, _res, next) => {
 // ─── Global Error Handler (extracted to middleware/errorHandler.js) ───────────
 app.use(errorHandler);
 
+const { initSocket } = require("./sockets/chatSocket");
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 connectDB().then(() => {
   const PORT = parseInt(process.env.PORT, 10) || 5000;
   const server = app.listen(PORT, () =>
     logger.info(`[SERVER] Port ${PORT} | env: ${process.env.NODE_ENV || "development"}`)
   );
+
+  // Initialize WebSockets
+  initSocket(server, allowedOrigins);
 
   // Graceful shutdown — drain existing connections before exit
   function shutdown(signal) {
