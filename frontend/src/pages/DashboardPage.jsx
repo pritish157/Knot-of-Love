@@ -154,8 +154,18 @@ export default function DashboardPage() {
 
         {/* ──── USER CARD ──────────────────────────────────────────────────── */}
         <section className="surface-card premium-shell grid gap-6 overflow-hidden p-6 sm:p-8 lg:grid-cols-[auto_1fr]">
-          <div className="flex items-center gap-5">
-            {/* ✅ Clickable avatar to trigger file input for immediate photo update */}
+          
+          {/* Hidden file input (shared for both views) */}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoUpload}
+          />
+
+          {/* DESKTOP VIEW */}
+          <div className="hidden md:flex items-center gap-5">
             <div className="relative group">
               <img
                 src={avatarUrl}
@@ -183,14 +193,6 @@ export default function DashboardPage() {
                   </>
                 )}
               </button>
-              {/* Hidden file input */}
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePhotoUpload}
-              />
               {user.isProfileVerified && (
                 <div className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full bg-emerald-500 text-white shadow-lg" title="Profile Verified">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -204,7 +206,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex flex-col justify-center gap-2 lg:items-end">
+          <div className="hidden md:flex flex-col justify-center gap-2 lg:items-end">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-muted">Trust Score</span>
               <span className="rounded-full bg-brand-500/10 px-3 py-1 text-sm font-extrabold text-brand-700">{user.trustScore || 0}%</span>
@@ -216,21 +218,104 @@ export default function DashboardPage() {
               />
             </div>
           </div>
+
+          {/* MOBILE VIEW (<768px) */}
+          <div className="md:hidden flex items-center gap-4">
+            <div className="relative group shrink-0">
+              <img
+                src={avatarUrl}
+                alt={user.name}
+                onError={(e) => handleImageError(e, user.name || "U")}
+                className="h-16 w-16 rounded-full border-2 border-white object-cover shadow-md"
+              />
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity cursor-pointer active:opacity-100"
+                title="Change profile photo"
+              >
+                {uploadingPhoto ? (
+                  <Spinner className="h-4 w-4 border-white/40 border-t-white" />
+                ) : (
+                  <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                )}
+              </button>
+              {user.isProfileVerified && (
+                <div className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-emerald-500 text-white shadow-lg" title="Profile Verified">
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                </div>
+              )}
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <h1 className="font-serif text-2xl leading-none text-ink truncate">{user.name}</h1>
+              <p className="mt-0.5 text-xs font-bold text-brand-700 truncate">{user.memberId || "KOL-XXXXX"}</p>
+              <p className="text-[10px] text-muted truncate">{user.city && user.state ? `${user.city}, ${user.state}` : user.email}</p>
+            </div>
+          </div>
+
+          <div className="md:hidden flex items-center gap-3 mt-2 border-t border-ink/5 pt-3">
+            <span className="text-xs font-bold text-muted shrink-0">Trust Score</span>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-ink/10">
+              <div
+                className="h-full rounded-full bg-brand-gradient transition-all duration-700"
+                style={{ width: `${user.trustScore || 0}%` }}
+              />
+            </div>
+            <span className="rounded-full bg-brand-500/10 px-2 py-0.5 text-[10px] font-extrabold text-brand-700 shrink-0">{user.trustScore || 0}%</span>
+          </div>
+
         </section>
 
         {/* ──── VERIFICATION STATUS ────────────────────────────────────────── */}
-        <section className="surface-card grid gap-4 p-6 sm:grid-cols-3">
+        {/* DESKTOP */}
+        <section className="hidden md:grid surface-card gap-4 p-6 sm:grid-cols-3">
           <VerificationBadge label="Email Verified"       verified={user.isEmailVerified} />
           <VerificationBadge label="Phone Verified"       verified={user.isPhoneVerified} />
           <VerificationBadge label="Profile Verified (KYC)" verified={user.isProfileVerified} />
         </section>
 
+        {/* MOBILE */}
+        <details className="md:hidden surface-card group p-4 cursor-pointer">
+          <summary className="font-bold text-sm text-ink outline-none list-none flex justify-between items-center">
+            <span>Verification Status</span>
+            <span className="text-muted group-open:rotate-180 transition-transform">▼</span>
+          </summary>
+          <div className="grid gap-3 mt-4 pt-2 border-t border-ink/5">
+            <VerificationBadge label="Email Verified"       verified={user.isEmailVerified} />
+            <VerificationBadge label="Phone Verified"       verified={user.isPhoneVerified} />
+            <VerificationBadge label="Profile Verified (KYC)" verified={user.isProfileVerified} />
+          </div>
+        </details>
+
         {/* ──── STATS ──────────────────────────────────────────────────────── */}
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* DESKTOP */}
+        <section className="hidden md:grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Profile Views"     value={user.profileViews || 0}         icon="👁️" />
           <StatCard label="Interests Received" value={incomingCount} icon="💌" color="text-amber-600" />
           <StatCard label="Matches Accepted"  value={user.matchesAccepted || 0}      icon="💑" color="text-emerald-600" />
           <StatCard label="Profile Complete"  value={`${completion}%`}               icon="📋" color="text-brand-700" />
+        </section>
+
+        {/* MOBILE */}
+        <section className="md:hidden grid grid-cols-2 gap-3">
+          {[
+            { label: "Views", value: user.profileViews || 0, icon: "👁️", color: "text-ink" },
+            { label: "Interests", value: incomingCount, icon: "💌", color: "text-amber-600" },
+            { label: "Matches", value: user.matchesAccepted || 0, icon: "💑", color: "text-emerald-600" },
+            { label: "Complete", value: `${completion}%`, icon: "📋", color: "text-brand-700" },
+          ].map((stat, i) => (
+            <article key={i} className="surface-card p-3 flex items-center gap-2">
+              <span className="text-xl shrink-0">{stat.icon}</span>
+              <div className="flex flex-col overflow-hidden">
+                <strong className={`text-xl font-extrabold leading-none ${stat.color} truncate`}>{stat.value}</strong>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-muted mt-0.5 truncate">{stat.label}</p>
+              </div>
+            </article>
+          ))}
         </section>
 
         {/* ──── INCOMING INTERESTS ────────────────────────────────── */}
@@ -256,7 +341,8 @@ export default function DashboardPage() {
         )}
 
         {/* ──── QUICK ACTIONS ─────────────────────────────────────────────── */}
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* DESKTOP */}
+        <section className="hidden md:grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Link to="/onboarding" className="surface-card interactive-card flex items-center gap-4 p-5">
             <span className="text-3xl">✏️</span>
             <div>
@@ -278,7 +364,6 @@ export default function DashboardPage() {
               <p className="text-xs text-muted">View recommendations</p>
             </div>
           </Link>
-          {/* ✅ Wishlist no longer navigates — shows disabled state */}
           <div className="surface-card flex cursor-not-allowed items-center gap-4 p-5 opacity-60">
             <span className="text-3xl">⭐</span>
             <div>
@@ -288,10 +373,36 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {/* MOBILE */}
+        <details className="md:hidden surface-card group p-4 cursor-pointer">
+          <summary className="font-bold text-sm text-ink outline-none list-none flex justify-between items-center">
+            <span>Quick Actions</span>
+            <span className="text-muted group-open:rotate-180 transition-transform">▼</span>
+          </summary>
+          <div className="grid grid-cols-2 gap-3 mt-4 pt-2 border-t border-ink/5">
+            <Link to="/onboarding" className="rounded-xl border border-ink/5 bg-slate-50 p-3 flex flex-col items-center text-center gap-2 active:bg-slate-100 transition-colors">
+              <span className="text-2xl">✏️</span>
+              <strong className="text-xs text-ink">Edit Profile</strong>
+            </Link>
+            <Link to="/kyc" className="rounded-xl border border-ink/5 bg-slate-50 p-3 flex flex-col items-center text-center gap-2 active:bg-slate-100 transition-colors">
+              <span className="text-2xl">🛡️</span>
+              <strong className="text-xs text-ink">Upload Docs</strong>
+            </Link>
+            <Link to="/profiles" className="rounded-xl border border-ink/5 bg-slate-50 p-3 flex flex-col items-center text-center gap-2 active:bg-slate-100 transition-colors">
+              <span className="text-2xl">❤️</span>
+              <strong className="text-xs text-ink">Find Matches</strong>
+            </Link>
+            <div className="rounded-xl border border-ink/5 bg-slate-50 p-3 flex flex-col items-center text-center gap-2 opacity-60 cursor-not-allowed">
+              <span className="text-2xl">⭐</span>
+              <strong className="text-xs text-ink">Wishlist</strong>
+            </div>
+          </div>
+        </details>
+
         {/* ──── CONTENT SPLIT: RECENT MATCHES & ACCOUNT INFO ─────────────── */}
         <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
           {/* RECENT MATCHES */}
-          <section className="surface-card flex flex-col p-6">
+          <section className="surface-card flex flex-col p-4 md:p-6">
             <div className="mb-4 flex items-center justify-between border-b border-ink/10 pb-4">
               <h2 className="font-serif text-2xl text-ink">Recent Matches</h2>
               <Link to="/profiles" className="text-sm font-bold text-brand-600 hover:text-brand-800">Browse New →</Link>
@@ -331,7 +442,8 @@ export default function DashboardPage() {
           </section>
 
           {/* ACCOUNT DETAILS SNAPSHOT */}
-          <section className="surface-card p-6">
+          {/* DESKTOP */}
+          <section className="hidden md:block surface-card p-6">
             <h2 className="border-b border-ink/10 pb-4 font-serif text-xl text-ink">Account Overview</h2>
             <dl className="mt-4 space-y-4 text-sm">
               {[
@@ -389,6 +501,64 @@ export default function DashboardPage() {
               <p className="mt-1 text-xs text-muted">Permanently removes all your data.</p>
             </div>
           </section>
+
+          {/* MOBILE */}
+          <details className="md:hidden surface-card group p-4 cursor-pointer">
+            <summary className="font-bold text-sm text-ink outline-none list-none flex justify-between items-center">
+              <span>Account Overview & Security</span>
+              <span className="text-muted group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            
+            <div className="mt-4 pt-4 border-t border-ink/5">
+              <dl className="space-y-3 text-sm">
+                {[
+                  ["Email",      user.email],
+                  ["Phone",      user.phone ? `+91 ${user.phone.slice(0,2)}***${user.phone.slice(-2)}` : "None"],
+                  ["Religion",   user.religion],
+                  ["Education",  user.education],
+                  ["Profession", user.profession]
+                ].map(([label, value]) => {
+                  if (!value) return null;
+                  return (
+                    <div key={label} className="flex justify-between items-center">
+                      <dt className="text-xs font-bold uppercase tracking-wide text-muted">{label}</dt>
+                      <dd className="font-semibold text-ink">{value}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+              
+              <div className="mt-5 pt-4 border-t border-ink/5 flex flex-col gap-4">
+                <Link to="/onboarding" className="text-sm font-bold text-brand-600 flex justify-between items-center">
+                  Update Information <span>→</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(true)}
+                  className="text-left text-sm font-bold text-brand-600"
+                >
+                  Change Password
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutAllModal(true)}
+                  className="text-left text-sm font-bold text-amber-600"
+                >
+                  Logout from all devices
+                </button>
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-red-100/50">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="text-sm font-bold text-red-500"
+                >
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </details>
         </div>
 
         {/* ──── INTERESTS I SENT ─────────────────────────────────── */}

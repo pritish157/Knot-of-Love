@@ -28,7 +28,7 @@ export default function DashboardLayout() {
   const avatarUrl = getProfileImageSrc(user?.profileImage, user?.name || "U", 48);
 
   return (
-    <div className="min-h-screen px-3 py-4 sm:px-4">
+    <div className="min-h-screen px-3 pt-4 pb-24 md:pb-4 sm:px-4">
       <header className="nav-glass mx-auto mb-6 flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
         
         {/* TOP ROW (Mobile) / LEFT SIDE (Desktop) */}
@@ -54,7 +54,7 @@ export default function DashboardLayout() {
         </div>
 
         {/* BOTTOM ROW (Mobile) / RIGHT SIDE (Desktop) */}
-        <div className="flex w-full flex-col gap-4 lg:w-auto lg:flex-row lg:items-center">
+        <div className="hidden md:flex w-full flex-col gap-4 lg:w-auto lg:flex-row lg:items-center">
           <nav className="flex w-full items-center gap-2 overflow-x-auto pb-1 lg:w-auto lg:pb-0 scrollbar-hide">
             <NavLink to="/dashboard" label="Dashboard" pathname={pathname} />
             <NavLink to="/profiles" label="Discovery" pathname={pathname} />
@@ -81,6 +81,26 @@ export default function DashboardLayout() {
       <div className="page-fade">
         <Outlet />
       </div>
+
+      {/* NEW MOBILE NAV (Bottom Tabs) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white/90 backdrop-blur-md border-t border-ink/10 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <Link to="/dashboard" className={`flex flex-col items-center w-full py-3 text-xs font-bold transition-colors ${pathname === '/dashboard' ? 'text-brand-600' : 'text-muted hover:text-ink'}`}>
+          <span className="text-xl mb-1">🏠</span>
+          Home
+        </Link>
+        <Link to="/profiles" className={`flex flex-col items-center w-full py-3 text-xs font-bold transition-colors ${pathname === '/profiles' ? 'text-brand-600' : 'text-muted hover:text-ink'}`}>
+          <span className="text-xl mb-1">🔍</span>
+          Discover
+        </Link>
+        <Link to="/chat" className={`flex flex-col items-center w-full py-3 text-xs font-bold transition-colors ${pathname === '/chat' ? 'text-brand-600' : 'text-muted hover:text-ink'}`}>
+          <span className="text-xl mb-1">💬</span>
+          Chat
+        </Link>
+        <Link to="/onboarding" className={`flex flex-col items-center w-full py-3 text-xs font-bold transition-colors ${pathname === '/onboarding' ? 'text-brand-600' : 'text-muted hover:text-ink'}`}>
+          <span className="text-xl mb-1">👤</span>
+          Profile
+        </Link>
+      </nav>
     </div>
   );
 }

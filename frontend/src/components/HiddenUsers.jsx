@@ -59,7 +59,7 @@ export default function HiddenUsers() {
     <div className="space-y-6">
       {/* ──── BLOCKED USERS ──── */}
       {blocked.length > 0 && (
-        <section className="surface-card p-6">
+        <section className="surface-card p-4 md:p-6">
           <h2 className="border-b border-ink/10 pb-4 font-serif text-xl text-ink">Blocked Users</h2>
           <ul className="mt-4 grid gap-4 sm:grid-cols-2">
             {blocked.map(m => (
@@ -92,7 +92,7 @@ export default function HiddenUsers() {
 
       {/* ──── ARCHIVED CONVERSATIONS ──── */}
       {archived.length > 0 && (
-        <section className="surface-card p-6">
+        <section className="surface-card p-4 md:p-6">
           <h2 className="border-b border-ink/10 pb-4 font-serif text-xl text-ink">Archived Conversations</h2>
           <ul className="mt-4 grid gap-4 sm:grid-cols-2">
             {archived.map(m => (

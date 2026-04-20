@@ -42,12 +42,8 @@ const SentInterests = memo(function SentInterests() {
     }
   }
 
-  return (
-    <section className="surface-card p-6">
-      <h2 className="mb-4 border-b border-ink/10 pb-4 font-serif text-2xl text-ink">
-        Interests I Sent
-      </h2>
-
+  const content = (
+    <>
       {loading ? (
         <div className="flex h-16 items-center justify-center">
           <span className="text-sm text-muted">Loading…</span>
@@ -94,7 +90,30 @@ const SentInterests = memo(function SentInterests() {
           })}
         </ul>
       )}
-    </section>
+    </>
+  );
+
+  return (
+    <>
+      {/* DESKTOP */}
+      <section className="hidden md:block surface-card p-6">
+        <h2 className="mb-4 border-b border-ink/10 pb-4 font-serif text-2xl text-ink">
+          Interests I Sent
+        </h2>
+        {content}
+      </section>
+
+      {/* MOBILE */}
+      <details className="md:hidden surface-card group p-4 cursor-pointer">
+        <summary className="font-bold text-sm text-ink outline-none list-none flex justify-between items-center">
+          <span>Interests I Sent</span>
+          <span className="text-muted group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <div className="mt-4 pt-4 border-t border-ink/5 cursor-auto">
+          {content}
+        </div>
+      </details>
+    </>
   );
 });
 

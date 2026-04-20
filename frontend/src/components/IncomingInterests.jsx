@@ -45,25 +45,14 @@ const IncomingInterests = memo(function IncomingInterests({ onCountChange }) {
   }
 
   if (loading) return (
-    <section className="surface-card p-6">
+    <section className="surface-card p-4 md:p-6">
       <h2 className="font-serif text-2xl text-ink mb-4">Interests Received</h2>
       <div className="flex h-24 items-center justify-center"><span className="text-muted text-sm">Loading…</span></div>
     </section>
   );
 
-  return (
-    <section className="surface-card p-6">
-      <div className="mb-4 flex items-center justify-between border-b border-ink/10 pb-4">
-        <h2 className="font-serif text-2xl text-ink">
-          Interests Received
-          {list.length > 0 && (
-            <span className="ml-2 rounded-full bg-brand-500 px-2.5 py-0.5 text-sm font-extrabold text-white">
-              {list.length}
-            </span>
-          )}
-        </h2>
-      </div>
-
+  const content = (
+    <>
       {toast && (
         <div className={`mb-4 rounded-xl px-4 py-3 text-sm font-semibold ${
           toast.type === "success" ? "bg-emerald-50 text-emerald-700" :
@@ -144,7 +133,44 @@ const IncomingInterests = memo(function IncomingInterests({ onCountChange }) {
           ))}
         </ul>
       )}
-    </section>
+    </>
+  );
+
+  return (
+    <>
+      {/* DESKTOP */}
+      <section className="hidden md:block surface-card p-6">
+        <div className="mb-4 flex items-center justify-between border-b border-ink/10 pb-4">
+          <h2 className="font-serif text-2xl text-ink">
+            Interests Received
+            {list.length > 0 && (
+              <span className="ml-2 rounded-full bg-brand-500 px-2.5 py-0.5 text-sm font-extrabold text-white">
+                {list.length}
+              </span>
+            )}
+          </h2>
+        </div>
+        {content}
+      </section>
+
+      {/* MOBILE */}
+      <details className="md:hidden surface-card group p-4 cursor-pointer">
+        <summary className="font-bold text-sm text-ink outline-none list-none flex justify-between items-center">
+          <span className="flex items-center gap-2">
+            Interests Received
+            {list.length > 0 && (
+              <span className="rounded-full bg-brand-500 px-2 py-0.5 text-xs font-extrabold text-white">
+                {list.length}
+              </span>
+            )}
+          </span>
+          <span className="text-muted group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <div className="mt-4 pt-4 border-t border-ink/5 cursor-auto">
+          {content}
+        </div>
+      </details>
+    </>
   );
 });
 

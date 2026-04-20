@@ -40,7 +40,7 @@ export default function NotificationBell() {
   const recent = notifications.slice(0, 10);
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="absolute right-4 top-4 md:static md:relative" ref={panelRef}>
       {/* Bell button */}
       <button
         id="notification-bell-btn"
@@ -65,8 +65,7 @@ export default function NotificationBell() {
       {open && (
         <div
           id="notification-panel"
-          className="absolute right-0 sm:right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white rounded-2xl shadow-2xl border border-ink/10 z-50 overflow-hidden transform origin-top-right"
-          style={{ marginRight: "-0.5rem" }} // Slight adjustment for padding alignment
+          className="fixed left-4 right-4 top-16 z-50 overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-2xl transform origin-top-right md:absolute md:left-auto md:right-0 md:top-full md:mt-2 md:w-96"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-ink/10 bg-slate-50">
