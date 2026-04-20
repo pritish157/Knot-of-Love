@@ -71,8 +71,27 @@ UserSchema.index({ isFlagged: 1 }); // Admin: quickly query suspected fake profi
 // ─── Generate memberId before save ──────────────────────────────────────────
 UserSchema.pre("save", async function (next) {
   if (!this.memberId && this.isNew) {
-    const count = await mongoose.model("User").countDocuments();
-    this.memberId = `KOL-${String(count + 1).padStart(5, "0")}`;
+    let nextSeq = 1;
+    try {
+      const lastUser = await mongoose.model("User")
+        .findOne({ memberId: { $exists: true, $ne: null } }, "memberId")
+        .sort({ memberId: -1 });
+      
+      if (lastUser && lastUser.memberId && lastUser.memberId.startsWith("KOL-")) {
+        const lastSeq = parseInt(lastUser.memberId.replace("KOL-", ""), 10);
+        if (!isNaN(lastSeq)) {
+          nextSeq = lastSeq + 1;
+        }
+      } else {
+        const count = await mongoose.model("User").countDocuments();
+        nextSeq = count + 1;
+      }
+    } catch (err) {
+      console.error("[User Model] Error generating memberId:", err);
+      // Fallback
+      nextSeq = Date.now() % 100000; 
+    }
+    this.memberId = `KOL-${String(nextSeq).padStart(5, "0")}`;
   }
 
   if (this.isModified("password")) {
