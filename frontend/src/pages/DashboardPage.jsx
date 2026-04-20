@@ -12,6 +12,7 @@ import { getProfileImageSrc, handleImageError } from "../utils/image";
 import IncomingInterests from "../components/IncomingInterests";
 import SentInterests from "../components/SentInterests";
 import Conversations from "../components/Conversations";
+import HiddenUsers from "../components/HiddenUsers";
 
 function VerificationBadge({ label, verified }) {
   return (
@@ -392,6 +393,9 @@ export default function DashboardPage() {
 
         {/* ──── INTERESTS I SENT ─────────────────────────────────── */}
         <SentInterests />
+
+        {/* ──── BLOCKED & ARCHIVED USERS ─────────────────────────── */}
+        <HiddenUsers />
       </main>
 
       {/* ──── DELETE ACCOUNT MODAL ───────────────────────────────────────────── */}

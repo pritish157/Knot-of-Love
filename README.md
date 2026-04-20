@@ -1,5 +1,7 @@
 # Knot of Love 💍
 
+**Live Demo:** [https://knot-of-love.vercel.app](https://knot-of-love.vercel.app)
+
 Knot of Love is a premium, secure, and fully-featured matrimonial platform built on the MERN stack. It empowers users to find meaningful connections with robust matchmaking algorithms, rigorous KYC verification, and an intuitive user interface.
 
 ## 🌟 Features

@@ -595,6 +595,12 @@
 }
 
 /* Admin table */
+.admin-table-wrap {
+  overflow-x: auto;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -776,6 +782,8 @@
   }
   .admin-main {
     margin-left: 0;
+    width: 100%;
+    min-width: 0;
   }
   .admin-shell {
     flex-direction: column;
@@ -789,6 +797,25 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+  }
+  .admin-topbar {
+    padding: 0 16px;
+  }
+  .admin-page-content {
+    padding: 16px;
+  }
+  .admin-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-action-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .admin-search-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .admin-search-input {
+    width: 100%;
   }
 }
 

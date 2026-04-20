@@ -481,3 +481,98 @@ exports.reportUser = async (req, res, next) => {
 
   res.json({ success: true, message: "User reported and blocked successfully." });
 };
+
+/**
+ * POST /api/matches/unblock/:matchId
+ * Unblock a previously blocked user.
+ */
+exports.unblockUser = async (req, res, next) => {
+  const match = await Match.findById(req.params.matchId);
+  if (!match) return next(new AppError("Match not found", 404));
+
+  const me = req.user.id;
+  if (match.status !== "Blocked" || match.blockedBy?.toString() !== me) {
+    return next(new AppError("You have not blocked this user", 400));
+  }
+
+  // Restore to Unmatched or Accepted. Let's set it to "Unmatched" to require a fresh connection.
+  match.status = "Unmatched";
+  match.blockedBy = null;
+  match.actionDate = Date.now();
+  await match.save();
+
+  res.json({ success: true, message: "User unblocked successfully" });
+};
+
+/**
+ * POST /api/matches/unarchive/:matchId
+ * Unarchive a previously archived conversation.
+ */
+exports.unarchiveMatch = async (req, res, next) => {
+  const match = await Match.findById(req.params.matchId);
+  if (!match) return next(new AppError("Match not found", 404));
+
+  const me = req.user.id;
+  if (match.senderId.toString() !== me && match.receiverId.toString() !== me) {
+    return next(new AppError("You are not part of this match", 403));
+  }
+
+  match.archivedBy = match.archivedBy.filter(id => id.toString() !== me);
+  await match.save();
+
+  res.json({ success: true, message: "Conversation unarchived" });
+};
+
+/**
+ * GET /api/matches/hidden
+ * Get all blocked users and archived matches for the logged-in user.
+ */
+exports.getHidden = async (req, res, next) => {
+  const me = req.user.id;
+  
+  const matches = await Match.find({
+    $or: [
+      { status: "Blocked", blockedBy: me },
+      { archivedBy: me }
+    ]
+  }).lean();
+
+  const otherIds = matches.map(m =>
+    m.senderId.toString() === me ? m.receiverId : m.senderId
+  );
+
+  const [users, profiles] = await Promise.all([
+    User.find({ _id: { $in: otherIds } }).select("name gender memberId isProfileVerified").lean(),
+    Profile.find({ userId: { $in: otherIds } }).select("userId profileImage").lean()
+  ]);
+
+  const userMap    = {};  for (const u of users)    userMap[u._id.toString()]    = u;
+  const profileMap = {};  for (const p of profiles) profileMap[p.userId.toString()] = p;
+
+  const blocked = [];
+  const archived = [];
+
+  for (const m of matches) {
+    const otherId = m.senderId.toString() === me ? m.receiverId.toString() : m.senderId.toString();
+    const other = userMap[otherId] || {};
+    const otherProfile = profileMap[otherId] || {};
+    
+    const fmt = {
+      matchId: m._id,
+      user: {
+        _id: other._id, name: other.name, gender: other.gender,
+        memberId: other.memberId, isVerified: other.isProfileVerified,
+        image: fmtImage(otherProfile.profileImage)
+      },
+      actionDate: m.actionDate
+    };
+
+    if (m.status === "Blocked" && m.blockedBy?.toString() === me) {
+      blocked.push(fmt);
+    } else if (m.archivedBy?.map(id => id.toString()).includes(me)) {
+      archived.push(fmt);
+    }
+  }
+
+  res.json({ success: true, blocked, archived });
+};

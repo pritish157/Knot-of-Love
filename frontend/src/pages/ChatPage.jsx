@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { io } from "socket.io-client";
 import CryptoJS from "crypto-js";
 import { useAuth } from "../hooks/useAuth";
+import { useSocket } from "../hooks/useSocket";
 import { useActiveMatches } from "../hooks/useActiveMatches";
 import { apiRequest } from "../services/http";
 import { getProfileImageSrc, handleImageError } from "../utils/image";
@@ -23,7 +23,6 @@ export default function ChatPage() {
   const [activeMatchId, setActiveMatchId] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   
-  const [socket, setSocket] = useState(null);
   const [messages, setMessages] = useState({}); // { matchId: [messages] }
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -33,20 +32,13 @@ export default function ChatPage() {
   const bottomRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // Initialize socket connection
+  const socket = useSocket();
+
+  // Initialize socket event listeners
   useEffect(() => {
-    if (!token) return;
+    if (!socket) return;
 
-    const newSocket = io(import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, ""), {
-      auth: { token },
-      withCredentials: true
-    });
-
-    setSocket(newSocket);
-
-    newSocket.on("new_message", (msg) => {
-      // Create a decrypt helper just for this scope, or use the top level one if available.
-      // Since encrypt/decrypt are defined in the component body, we should define them outside or just use CryptoJS here directly to avoid dependency issues in useEffect.
+    const handleNewMessage = (msg) => {
       let decryptedText = msg.text;
       if (msg.text && msg.text.startsWith("U2Fsd")) {
         try {
@@ -57,17 +49,23 @@ export default function ChatPage() {
 
       const decryptedMsg = { ...msg, text: decryptedText };
 
-      setMessages((prev) => ({
-        ...prev,
-        [msg.matchId]: [...(prev[msg.matchId] || []), decryptedMsg]
-      }));
+      setMessages((prev) => {
+        const currentMsgs = prev[msg.matchId] || [];
+        if (currentMsgs.some(m => m._id === msg._id)) return prev; // De-duplicate
+
+        return {
+          ...prev,
+          [msg.matchId]: [...currentMsgs, decryptedMsg]
+        };
+      });
+
       // If we received a message for the active chat, mark it as seen
       if (activeMatchId === msg.matchId && msg.senderId !== user?._id) {
-        newSocket.emit("mark_seen", { matchId: msg.matchId, senderId: msg.senderId });
+        socket.emit("mark_seen", { matchId: msg.matchId, senderId: msg.senderId });
       }
-    });
+    };
 
-    newSocket.on("new_message_alert", (msg) => {
+    const handleNewMessageAlert = (msg) => {
       let decryptedText = msg.text;
       if (msg.text && msg.text.startsWith("U2Fsd")) {
         try {
@@ -79,21 +77,21 @@ export default function ChatPage() {
       const decryptedMsg = { ...msg, text: decryptedText };
 
       // Receiver is not in the room, still update messages list
-      setMessages((prev) => ({
-        ...prev,
-        [msg.matchId]: [...(prev[msg.matchId] || []), decryptedMsg]
-      }));
-    });
+      setMessages((prev) => {
+        const currentMsgs = prev[msg.matchId] || [];
+        if (currentMsgs.some(m => m._id === msg._id)) return prev; // De-duplicate
 
-    newSocket.on("typing", ({ matchId }) => {
-      setTypingUsers((prev) => ({ ...prev, [matchId]: true }));
-    });
+        return {
+          ...prev,
+          [msg.matchId]: [...currentMsgs, decryptedMsg]
+        };
+      });
+    };
 
-    newSocket.on("stop_typing", ({ matchId }) => {
-      setTypingUsers((prev) => ({ ...prev, [matchId]: false }));
-    });
+    const handleTyping = ({ matchId }) => setTypingUsers(prev => ({ ...prev, [matchId]: true }));
+    const handleStopTyping = ({ matchId }) => setTypingUsers(prev => ({ ...prev, [matchId]: false }));
 
-    newSocket.on("messages_seen", ({ matchId }) => {
+    const handleMessagesSeen = ({ matchId }) => {
       setMessages((prev) => {
         if (!prev[matchId]) return prev;
         return {
@@ -101,10 +99,22 @@ export default function ChatPage() {
           [matchId]: prev[matchId].map(m => ({ ...m, isRead: true }))
         };
       });
-    });
+    };
 
-    return () => newSocket.close();
-  }, [user, token]);
+    socket.on("new_message", handleNewMessage);
+    socket.on("new_message_alert", handleNewMessageAlert);
+    socket.on("typing", handleTyping);
+    socket.on("stop_typing", handleStopTyping);
+    socket.on("messages_seen", handleMessagesSeen);
+
+    return () => {
+      socket.off("new_message", handleNewMessage);
+      socket.off("new_message_alert", handleNewMessageAlert);
+      socket.off("typing", handleTyping);
+      socket.off("stop_typing", handleStopTyping);
+      socket.off("messages_seen", handleMessagesSeen);
+    };
+  }, [socket, activeMatchId, user?._id]);
 
   // Handle active match selection
   useEffect(() => {

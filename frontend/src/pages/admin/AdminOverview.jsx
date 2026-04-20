@@ -58,7 +58,7 @@ export default function AdminOverview() {
       </div>
 
       {/* Quick Actions */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginBottom: 28 }}>
+      <div className="admin-action-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginBottom: 28 }}>
         <QuickAction
           icon="🔍"
           title="Review KYC Submissions"
