@@ -40,7 +40,7 @@ export default function NotificationBell() {
   const recent = notifications.slice(0, 10);
 
   return (
-    <div className="absolute right-4 top-4 md:static md:relative" ref={panelRef}>
+    <div className="absolute right-4 top-4 md:relative md:right-auto md:top-auto" ref={panelRef}>
       {/* Bell button */}
       <button
         id="notification-bell-btn"
