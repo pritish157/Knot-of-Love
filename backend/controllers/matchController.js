@@ -3,6 +3,7 @@ const Match      = require("../models/Match");
 const User       = require("../models/User");
 const Profile    = require("../models/Profile");
 const Preference = require("../models/Preference");
+const AdminLog   = require("../models/AdminLog");
 const AppError   = require("../utils/AppError");
 const sendEmail  = require("../utils/sendEmail");
 const logger     = require("../utils/logger");
@@ -367,17 +368,25 @@ exports.getRecommended = async (req, res, next) => {
     if (p.lifestyle?.smoking  === viewerProfile?.lifestyle?.smoking)  score += 7.5;
     if (p.lifestyle?.drinking === viewerProfile?.lifestyle?.drinking) score += 7.5;
 
-    recommendations.push({
+    const isBlurred = !req.user.isProfileVerified;
+    const entry = {
       _id: u._id, name: u.name, age, gender: u.gender,
       maritalStatus: u.maritalStatus, religion: p.religion,
-      education: p.education, profession: p.profession,
-      location: p.location?.city && p.location?.state
-        ? `${p.location.city}, ${p.location.state}` : "",
       matchScore: Math.min(99, Math.round(score)),
       isVerified: u.isProfileVerified, trustScore: u.trustScore,
       image: fmtImage(p.profileImage),
-      isBlurred: !req.user.isProfileVerified
-    });
+      isBlurred
+    };
+
+    // Only expose sensitive details when viewer is verified
+    if (!isBlurred) {
+      entry.education  = p.education;
+      entry.profession = p.profession;
+      entry.location   = p.location?.city && p.location?.state
+        ? `${p.location.city}, ${p.location.state}` : "";
+    }
+
+    recommendations.push(entry);
   }
 
   recommendations.sort((a, b) => b.matchScore - a.matchScore || b.trustScore - a.trustScore);
@@ -465,7 +474,6 @@ exports.reportUser = async (req, res, next) => {
   const reportedUserId = match.senderId.toString() === me ? match.receiverId : match.senderId;
 
   // Log to AdminLog — `admin` = reporter (user who filed the report), `targetUser` = reported user
-  const AdminLog = require("../models/AdminLog");
   await AdminLog.create({
     action:     "USER_REPORTED",
     admin:      me,               // reporter

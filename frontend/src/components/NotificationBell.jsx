@@ -40,14 +40,14 @@ export default function NotificationBell() {
   const recent = notifications.slice(0, 10);
 
   return (
-    <div className="absolute right-4 top-4 md:relative md:right-auto md:top-auto" ref={panelRef}>
+    <div className="relative" ref={panelRef}>
       {/* Bell button */}
       <button
         id="notification-bell-btn"
         type="button"
         onClick={() => setOpen(prev => !prev)}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
-        className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-black/5 transition-colors"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-black/5"
       >
         <svg className="w-5 h-5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -65,7 +65,7 @@ export default function NotificationBell() {
       {open && (
         <div
           id="notification-panel"
-          className="fixed left-4 right-4 top-16 z-50 overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-2xl transform origin-top-right md:absolute md:left-auto md:right-0 md:top-full md:mt-2 md:w-96"
+          className="fixed inset-x-3 top-[4.5rem] z-[60] overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-2xl md:absolute md:inset-x-auto md:right-0 md:top-full md:mt-2 md:w-96"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-ink/10 bg-slate-50">

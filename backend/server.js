@@ -16,10 +16,12 @@ const path         = require("path");
 const hpp          = require("hpp");
 const xss          = require("xss-clean");
 
-const connectDB     = require("./config/db");
-const logger        = require("./utils/logger");
-const AppError      = require("./utils/AppError");
-const errorHandler  = require("./middleware/errorHandler");
+const mongoose       = require("mongoose");
+const connectDB      = require("./config/db");
+const logger         = require("./utils/logger");
+const AppError       = require("./utils/AppError");
+const errorHandler   = require("./middleware/errorHandler");
+const startKeepAlive = require("./utils/keepAlive");
 
 // ─── Validate mandatory env vars at boot ─────────────────────────────────────
 const REQUIRED_ENV = ["MONGO_URI", "JWT_SECRET"];
@@ -121,7 +123,7 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Please try again later." },
-  skip: (req) => req.path === "/health" // health checks bypass
+  skip: (req) => req.path === "/health" || req.path === "/ping" // keep-alive bypass
 });
 app.use(globalLimiter);
 
@@ -136,10 +138,24 @@ app.use("/api/messages", require("./routes/messageRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/admin",    require("./routes/adminRoutes"));
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
+// ─── Health Check & Keep-Alive Ping ───────────────────────────────────────────
 app.get("/health", (_req, res) =>
   res.json({ status: "ok", env: process.env.NODE_ENV, ts: new Date().toISOString() })
 );
+
+// Pings Render and MongoDB connection to keep both active
+app.get("/ping", async (_req, res) => {
+  let dbStatus = "disconnected";
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await mongoose.connection.db.admin().ping();
+      dbStatus = "connected";
+    }
+  } catch (err) {
+    logger.error(`[PING] MongoDB keep-alive ping error: ${err.message}`);
+  }
+  res.json({ status: "ok", db: dbStatus, ts: new Date().toISOString() });
+});
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((_req, _res, next) => {
@@ -160,6 +176,9 @@ connectDB().then(() => {
 
   // Initialize WebSockets
   initSocket(server, allowedOrigins);
+
+  // Start Keep-Alive self-ping worker (pings every 5 mins to prevent Render sleep & MongoDB idle timeout)
+  startKeepAlive(process.env.RENDER_EXTERNAL_URL || "https://knot-of-love.onrender.com", 5);
 
   // Graceful shutdown — drain existing connections before exit
   function shutdown(signal) {

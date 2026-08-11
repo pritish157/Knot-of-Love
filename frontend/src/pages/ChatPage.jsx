@@ -7,6 +7,8 @@ import { useActiveMatches } from "../hooks/useActiveMatches";
 import { apiRequest } from "../services/http";
 import { getProfileImageSrc, handleImageError } from "../utils/image";
 import Spinner from "../components/Spinner";
+import Toast from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 
 const QUICK = [
   "I'm interested! Please share your contact details.",
@@ -20,6 +22,7 @@ export default function ChatPage() {
   const { matches, loadingMatches, refreshMatches } = useActiveMatches();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast, showToast, clearToast } = useToast();
   const [activeMatchId, setActiveMatchId] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   
@@ -155,27 +158,27 @@ export default function ChatPage() {
 
   const executeManageAction = async () => {
     if (!activeMatchId || !confirmAction) return;
-    
+
     try {
       let body = undefined;
       if (confirmAction === "report") {
         if (!reportReason.trim()) {
-          alert("Please enter a reason for reporting.");
+          showToast("Please enter a reason for reporting.", "error");
           return;
         }
         body = JSON.stringify({ reason: reportReason });
       }
-      
+
       await apiRequest(`/api/matches/${confirmAction}/${activeMatchId}`, {
         method: "POST",
         body
       });
-      
+
       setConfirmAction(null);
       setActiveMatchId(null);
       refreshMatches();
     } catch (e) {
-      alert(e.message);
+      showToast(e.message || "Action failed.", "error");
     }
   };
 
@@ -194,7 +197,7 @@ export default function ChatPage() {
           }));
           setMessages(prev => ({ ...prev, [activeMatchId]: decryptedMessages }));
         } catch (err) {
-          console.error(err);
+          showToast("Could not load message history. Please try again.", "error");
         } finally {
           setLoadingHistory(false);
         }
@@ -238,7 +241,7 @@ export default function ChatPage() {
     const payload = msgText || text.trim();
     if (!payload || !activeMatchId) return;
     setSending(true);
-    
+
     if (socket && activeMatch) {
       socket.emit("stop_typing", { matchId: activeMatchId, receiverId: activeMatch.user._id });
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -250,10 +253,9 @@ export default function ChatPage() {
         method: "POST",
         body: JSON.stringify({ matchId: activeMatchId, text: encryptedText })
       });
-      // The socket event will trigger and decrypt it because it goes through new_message
       setText("");
     } catch (e) {
-      alert(e.message);
+      showToast(e.message || "Could not send message.", "error");
     } finally {
       setSending(false);
     }
@@ -261,14 +263,16 @@ export default function ChatPage() {
 
   if (loadingMatches) {
     return (
-      <div className="flex h-[calc(100vh-140px)] items-center justify-center bg-slate-50">
+      <div className="flex h-chat-mobile md:h-chat-desktop items-center justify-center">
         <Spinner />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-140px)] max-w-7xl overflow-hidden bg-white shadow-xl sm:rounded-xl sm:border sm:border-ink/10">
+    <>
+      <Toast toast={toast} onClose={clearToast} />
+      <div className="mx-auto flex h-chat-mobile md:h-chat-desktop max-w-7xl overflow-hidden bg-white md:shadow-xl md:rounded-xl md:border md:border-ink/10 md:mx-4">
       
       {/* Sidebar: Chat List */}
       <div className={`w-full flex-col border-r border-ink/10 bg-slate-50 md:flex md:w-80 lg:w-96 ${activeMatchId ? "hidden md:flex" : "flex"}`}>
@@ -339,12 +343,15 @@ export default function ChatPage() {
         ) : (
           <>
             {/* Chat Header */}
-            <div className="flex items-center gap-3 border-b border-ink/10 bg-slate-50 p-3 sm:p-4 shadow-sm z-30 relative">
-              <button 
+            <div className="flex items-center gap-3 border-b border-ink/10 bg-white p-3 sm:p-4 shadow-sm z-30 relative">
+              <button
                 onClick={() => setActiveMatchId(null)}
-                className="md:hidden p-2 text-muted hover:text-ink rounded-full hover:bg-black/5"
+                className="md:hidden p-2 text-muted hover:text-ink rounded-full hover:bg-black/5 transition-colors"
+                aria-label="Back to conversations"
               >
-                ←
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
               </button>
               <img
                 src={getProfileImageSrc(activeMatch.user.image, activeMatch.user.name, 40)}
@@ -520,6 +527,7 @@ export default function ChatPage() {
         </div>
       )}
 
-    </div>
+      </div>
+    </>
   );
 }

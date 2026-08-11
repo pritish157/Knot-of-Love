@@ -24,7 +24,7 @@ exports.initSocket = (server, allowedOrigins) => {
     if (!token) return next(new Error("Authentication error"));
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
       
       const user = await User.findById(decoded.user.id).select("tokenVersion");
       if (!user || user.tokenVersion !== decoded.user.tv) {

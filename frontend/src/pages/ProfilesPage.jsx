@@ -169,11 +169,77 @@ export default function ProfilesPage() {
     }
   }
 
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
   return (
     <div className="page-fade">
       <Toast toast={toast} onClose={clearToast} />
-      <main className="mx-auto grid w-full max-w-6xl gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="surface-card premium-shell p-5 xl:sticky xl:top-24 xl:self-start">
+
+      {/* ── Mobile Filter Toggle ───────────────────────────────────── */}
+      <div className="xl:hidden sticky top-0 z-30 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-ink/8 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
+        <div>
+          <p className="text-sm font-bold text-ink">
+            {loading ? "Searching…" : `${profiles.length} match${profiles.length === 1 ? "" : "es"} found`}
+          </p>
+          <p className="text-xs text-muted">Tap to refine your search</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowMobileFilters(true)}
+          className="flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-xs font-bold text-brand-700 transition hover:bg-brand-100"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+          </svg>
+          Filters
+        </button>
+      </div>
+
+      {/* ── Mobile Filter Drawer ───────────────────────────────────── */}
+      {showMobileFilters && (
+        <div className="fixed inset-0 z-50 flex xl:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            onClick={() => setShowMobileFilters(false)}
+            aria-label="Close filters"
+          />
+          <aside className="relative ml-auto flex h-full w-[min(100vw,380px)] flex-col bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/8 px-5 py-4">
+              <h2 className="font-serif text-xl text-ink">Filter Profiles</h2>
+              <button
+                type="button"
+                onClick={() => setShowMobileFilters(false)}
+                className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-muted hover:bg-slate-200 transition"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              <form className="grid gap-4" onSubmit={(e) => { handleSubmit(e); setShowMobileFilters(false); }}>
+                <FilterInput label="Minimum age" name="minAge" value={localFilters.minAge} onChange={updateFilter} type="number" />
+                <FilterInput label="Maximum age" name="maxAge" value={localFilters.maxAge} onChange={updateFilter} type="number" />
+                <FilterSelect label="Location" name="location" value={localFilters.location} onChange={updateFilter} options={locations} defaultLabel="Any location" />
+                <FilterSelect label="Religion" name="religion" value={localFilters.religion} onChange={updateFilter} options={religions} defaultLabel="Any religion" />
+                <FilterSelect label="Community / caste" name="caste" value={localFilters.caste} onChange={updateFilter} options={communities} defaultLabel="Any community" />
+                <FilterSelect label="Mother tongue" name="motherTongue" value={localFilters.motherTongue} onChange={updateFilter} options={languages} defaultLabel="Any language" />
+                <FilterInput label="Minimum annual income" name="income" value={localFilters.income} onChange={updateFilter} type="number" />
+                <button type="submit" disabled={loading} className="btn-primary w-full">
+                  {loading ? "Searching..." : "Apply Filters"}
+                </button>
+                <button type="button" onClick={() => { handleReset(); setShowMobileFilters(false); }} className="btn-secondary w-full">
+                  Reset
+                </button>
+              </form>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      <main className="grid w-full gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="hidden xl:block surface-card premium-shell p-5 xl:sticky xl:top-24 xl:self-start">
           <div>
             <p className="hero-badge">Profile discovery</p>
             <h1 className="mt-4 font-serif text-4xl leading-none text-ink">

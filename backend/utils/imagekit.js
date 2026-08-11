@@ -1,5 +1,6 @@
 "use strict";
 const { ImageKit, toFile } = require("@imagekit/nodejs");
+const logger = require("./logger");
 
 // ─── ImageKit singleton ───────────────────────────────────────────────────────
 // Credentials loaded from .env:
@@ -42,8 +43,9 @@ async function deleteFromImageKit(fileId) {
   try {
     await imagekit.files.delete(fileId);
   } catch (err) {
-    console.warn("[ImageKit] Could not delete file:", fileId, err.message);
+    logger.warn(`[ImageKit] Could not delete file: ${fileId} — ${err.message}`);
   }
 }
 
 module.exports = { uploadToImageKit, deleteFromImageKit };
+

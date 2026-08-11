@@ -137,30 +137,32 @@ export default function OnboardingPage() {
   if (!constants) return <div className="flex h-96 items-center justify-center"><Spinner /></div>;
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-6 p-4">
+    <main className="mx-auto w-full max-w-3xl space-y-4 px-0 pb-28 pt-2 md:space-y-6 md:pb-8">
       <Toast toast={toast} onClose={clearToast} />
 
       {/* ─── Progress ──────────────────────────────────────────────────── */}
-      <section className="surface-card p-6">
-        <div className="flex items-center justify-between">
+      <section className="surface-card p-4 sm:p-6">
+        <div className="flex items-center justify-between gap-2">
           <p className="hero-badge">Step {step} of 12</p>
-          <span className="text-sm font-bold text-muted">{STEP_LABELS[step - 1]}</span>
+          <span className="text-xs font-bold text-muted hidden sm:block">{STEP_LABELS[step - 1]}</span>
+          <span className="text-xs font-bold text-muted sm:hidden">{STEP_LABELS[step - 1]}</span>
         </div>
-        <div className="mt-4 flex gap-1">
+        <div className="mt-3 flex gap-1">
           {Array.from({ length: 12 }, (_, i) => (
             <button
               key={i}
               onClick={() => i + 1 <= (user?.onboardingStep || 1) && setStep(i + 1)}
+              aria-label={`Go to step ${i + 1}`}
               className={`h-2 flex-1 rounded-full transition-all ${
                 i + 1 <= step ? "bg-brand-gradient" : "bg-ink/10"
-              } ${i + 1 <= (user?.onboardingStep || 1) ? "cursor-pointer" : "cursor-not-allowed"}`}
+              } ${i + 1 <= (user?.onboardingStep || 1) ? "cursor-pointer hover:opacity-80" : "cursor-not-allowed"}`}
             />
           ))}
         </div>
       </section>
 
       {/* ─── Step Content ──────────────────────────────────────────────── */}
-      <section className="surface-card space-y-5 p-6">
+      <section className="surface-card space-y-4 p-4 sm:space-y-5 sm:p-6">
         {step === 1 && (
           <>
             <h2 className="font-serif text-3xl text-ink">Your Identity</h2>
@@ -328,15 +330,16 @@ export default function OnboardingPage() {
       </section>
 
       {/* ─── Navigation ────────────────────────────────────────────────── */}
-      <div className="flex justify-between">
+      {/* Sticky on mobile so the bottom nav doesn't hide the buttons */}
+      <div className="sticky bottom-20 z-20 md:static md:z-auto flex justify-between gap-3 rounded-2xl bg-white/90 px-4 py-3 shadow-lg md:bg-transparent md:shadow-none md:px-0 md:py-0">
         <button
           onClick={() => setStep(Math.max(1, step - 1))}
           disabled={step === 1}
-          className="btn-secondary"
+          className="btn-secondary flex-1 sm:flex-none"
         >
           ← Previous
         </button>
-        <button onClick={saveStep} disabled={saving} className="btn-primary">
+        <button onClick={saveStep} disabled={saving} className="btn-primary flex-1 sm:flex-none">
           {saving ? <Spinner className="h-4 w-4 border-white/40 border-t-white" /> : step === 12 ? "Complete Profile" : "Save & Continue →"}
         </button>
       </div>

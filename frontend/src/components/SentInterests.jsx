@@ -10,13 +10,12 @@ const STATUS_STYLE = {
 };
 
 const SentInterests = memo(function SentInterests() {
-  const [list, setList]       = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [list, setList]           = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [withdrawing, setWithdrawing] = useState(null);
+  const [errMsg, setErrMsg]       = useState(null);
 
-  useEffect(() => {
-    fetchSent();
-  }, []);
+  useEffect(() => { fetchSent(); }, []);
 
   async function fetchSent() {
     try {
@@ -30,13 +29,13 @@ const SentInterests = memo(function SentInterests() {
   }
 
   async function handleWithdraw(matchId) {
-    
     setWithdrawing(matchId);
+    setErrMsg(null);
     try {
       await apiRequest(`/api/matches/withdraw/${matchId}`, { method: "DELETE" });
       await fetchSent();
     } catch (e) {
-      alert(e.message || "Failed to withdraw interest.");
+      setErrMsg(e.message || "Failed to withdraw interest.");
     } finally {
       setWithdrawing(null);
     }
@@ -44,6 +43,11 @@ const SentInterests = memo(function SentInterests() {
 
   const content = (
     <>
+      {errMsg && (
+        <div className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {errMsg}
+        </div>
+      )}
       {loading ? (
         <div className="flex h-16 items-center justify-center">
           <span className="text-sm text-muted">Loading…</span>
@@ -65,13 +69,13 @@ const SentInterests = memo(function SentInterests() {
                   alt={item.name}
                   loading="lazy"
                   onError={e => handleImageError(e, item.name)}
-                  className="h-10 w-10 rounded-full object-cover shadow flex-shrink-0"
+                  className="h-10 w-10 flex-shrink-0 rounded-full object-cover shadow"
                 />
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-hidden min-w-0">
                   <p className="truncate font-bold text-ink text-sm">{item.name || "—"}</p>
-                  <p className="text-xs text-muted">{item.memberId || ""}</p>
+                  <p className="text-xs text-muted truncate">{item.memberId || ""}</p>
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${s.chip}`}>
                     {s.icon} {s.label}
                   </span>
@@ -79,9 +83,9 @@ const SentInterests = memo(function SentInterests() {
                     <button
                       onClick={() => handleWithdraw(item.matchId)}
                       disabled={withdrawing === item.matchId}
-                      className="text-[0.65rem] font-bold text-red-500 hover:text-red-700 disabled:opacity-50"
+                      className="text-[0.65rem] font-bold text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors"
                     >
-                      {withdrawing === item.matchId ? "Withdrawing..." : "Withdraw"}
+                      {withdrawing === item.matchId ? "Withdrawing…" : "Withdraw"}
                     </button>
                   )}
                 </div>

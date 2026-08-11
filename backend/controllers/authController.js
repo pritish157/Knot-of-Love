@@ -155,7 +155,10 @@ exports.sendOTP = async (req, res, next) => {
   if (!email) return next(new AppError("Email is required.", 400));
 
   const user = await User.findOne({ email: email.toLowerCase() });
-  if (!user) return next(new AppError("User not found.", 404));
+  // ⚠️  Anti-enumeration: always return success even if email doesn't exist
+  if (!user) {
+    return res.json({ success: true, message: "If that email is registered, an OTP has been sent." });
+  }
 
   // Rate limit: 1 OTP per minute
   const recentOTP = await OTP.findOne({
@@ -182,7 +185,7 @@ exports.sendOTP = async (req, res, next) => {
     return next(new AppError("Failed to send email. Please try again later.", 500));
   }
 
-  res.json({ success: true, message: "OTP sent successfully." });
+  res.json({ success: true, message: "If that email is registered, an OTP has been sent." });
 };
 
 // ─── POST /api/auth/verify-otp ───────────────────────────────────────────────
@@ -406,8 +409,13 @@ exports.uploadProfilePhoto = async (req, res, next) => {
 // ─── POST /api/auth/forgot-password ──────────────────────────────────────────
 exports.forgotPassword = async (req, res, next) => {
   const { email } = req.body;
+  if (!email) return next(new AppError("Email is required.", 400));
+
+  // ⚠️  Anti-enumeration: always return success even if email doesn't exist
+  const genericMsg = "If that email is registered, you will receive a reset code shortly.";
+
   const user = await User.findOne({ email: email.toLowerCase() });
-  if (!user) return next(new AppError("User not found.", 404));
+  if (!user) return res.json({ success: true, message: genericMsg });
 
   const otpCode = generateOTP();
   await OTP.findOneAndDelete({ userId: user._id, purpose: "password_reset" });
@@ -421,10 +429,11 @@ exports.forgotPassword = async (req, res, next) => {
       html: `<p>Your password reset code is: <strong>${otpCode}</strong></p>`
     });
   } catch (err) {
-    return next(new AppError("Error sending email.", 500));
+    logger.error(`[AUTH] Failed to send password reset email to ${user.email}: ${err.message}`);
+    // Still return generic message — don't leak email existence
   }
 
-  res.json({ success: true, message: "Reset OTP sent to email." });
+  res.json({ success: true, message: genericMsg });
 };
 
 // ─── POST /api/auth/reset-password ───────────────────────────────────────────

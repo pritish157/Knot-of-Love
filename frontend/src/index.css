@@ -7,6 +7,15 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    /* Prevent tap highlight on mobile */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :root {
+    --nav-height-mobile: 64px;
+    --header-height-mobile: 72px;
+    /* safe area for iPhone home bar */
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   * {
@@ -98,8 +107,10 @@
   /* ─── BUTTONS ──────────────────────────────────────────────────────────── */
 
   .btn-base {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold tracking-wide transition-all duration-300 ease-out;
+    @apply inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold tracking-wide transition-all duration-300 ease-out;
     @apply active:scale-[0.97] active:duration-100;
+    /* Minimum touch target 44px for accessibility */
+    min-width: 44px;
   }
 
   .btn-primary {
@@ -147,8 +158,10 @@
   }
 
   .input-field {
-    @apply min-h-14 w-full rounded-2xl border bg-white px-4 py-3 text-ink transition-all duration-300;
+    @apply min-h-[3.25rem] w-full rounded-2xl border bg-white px-4 py-3 text-ink transition-all duration-300;
     @apply placeholder:text-slate-400;
+    /* Prevent iOS auto-zoom: font-size must be >= 16px */
+    font-size: 1rem;
     border-color: rgba(24, 29, 39, 0.12);
     box-shadow:
       0 1px 2px rgba(30, 20, 40, 0.04) inset,
@@ -243,6 +256,31 @@
   }
   .bg-white\/92 {
     background-color: rgba(255, 255, 255, 0.92);
+  }
+  /* Safe-area bottom padding for iOS home indicator */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .pb-safe-sm {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+  /* Prevent flex-child text overflow */
+  .min-w-0 {
+    min-width: 0;
+  }
+  /* Mobile chat viewport height (accounts for header + bottom nav + safe area) */
+  .h-chat-mobile {
+    height: calc(100dvh - var(--header-height-mobile) - var(--nav-height-mobile) - var(--safe-bottom));
+  }
+  .h-chat-desktop {
+    height: calc(100dvh - 80px);
+  }
+  /* Truncate with ellipsis for flex children */
+  .truncate-child > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 

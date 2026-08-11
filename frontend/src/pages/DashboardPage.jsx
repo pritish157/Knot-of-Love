@@ -150,7 +150,7 @@ export default function DashboardPage() {
   return (
     <>
       <Toast toast={toast} onClose={clearToast} />
-      <main className="mx-auto w-full max-w-6xl space-y-5 p-4">
+      <main className="w-full space-y-4 sm:space-y-5">
 
         {/* ──── USER CARD ──────────────────────────────────────────────────── */}
         <section className="surface-card premium-shell grid gap-6 overflow-hidden p-6 sm:p-8 lg:grid-cols-[auto_1fr]">

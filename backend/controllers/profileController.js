@@ -25,7 +25,6 @@ exports.getProfiles = async (req, res, next) => {
   } = req.query;
 
   // Fetch all matches to exclude people we've already interacted with
-  const Match = require("../models/Match");
   const existingMatches = await Match.find({
     $or: [{ senderId: req.user.id }, { receiverId: req.user.id }]
   }).select("senderId receiverId").lean();
@@ -102,32 +101,39 @@ exports.getProfiles = async (req, res, next) => {
       const age = u.dob
         ? Math.floor((Date.now() - new Date(u.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
         : null;
-      return {
+      const isBlurred = !viewerVerified;
+      const entry = {
         _id: u._id,
         name: u.name,
         age,
         gender: u.gender,
         maritalStatus: u.maritalStatus,
         religion: p.religion,
-        education: p.education,
-        profession: p.profession,
-        incomeRange: p.income,
-        location: p.location?.city && p.location?.state
-          ? `${p.location.city}, ${p.location.state}`
-          : p.location?.state || "",
-        height: p.height,
-        bodyType: p.bodyType,
-        complexion: p.complexion,
-        bio: p.aboutMe,
-        motherTongue: p.motherTongue,
         isVerified: u.isProfileVerified,
         trustScore: u.trustScore,
         image: p.profileImage
           ? (p.profileImage.startsWith("http") ? p.profileImage : `/uploads/profiles/${p.profileImage}`)
           : "",
-        isBlurred: !viewerVerified,
+        isBlurred,
         profileViews: u.profileViews
       };
+
+      // Only expose sensitive details to verified viewers
+      if (!isBlurred) {
+        entry.education    = p.education;
+        entry.profession   = p.profession;
+        entry.incomeRange  = p.income;
+        entry.location     = p.location?.city && p.location?.state
+          ? `${p.location.city}, ${p.location.state}`
+          : p.location?.state || "";
+        entry.height       = p.height;
+        entry.bodyType     = p.bodyType;
+        entry.complexion   = p.complexion;
+        entry.bio          = p.aboutMe;
+        entry.motherTongue = p.motherTongue;
+      }
+
+      return entry;
     });
 
   res.json({

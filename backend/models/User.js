@@ -1,6 +1,7 @@
 "use strict";
 const mongoose = require("mongoose");
 const bcrypt   = require("bcryptjs");
+const logger   = require("../utils/logger");
 
 // ─── User Schema ─────────────────────────────────────────────────────────────
 // Core identity & auth only — profile, preferences, OTP live in separate models.
@@ -58,7 +59,10 @@ const UserSchema = new mongoose.Schema(
     // ─── Password Reset & Security ─────────────────────────────────────────────
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpires: { type: Date, select: false },
-    tokenVersion: { type: Number, default: 0 }
+    tokenVersion: { type: Number, default: 0 },
+
+    // ─── Push Notifications ────────────────────────────────────────────────────
+    fcmTokens: [{ type: String, trim: true }]
   },
   { timestamps: true }
 );
@@ -73,10 +77,11 @@ UserSchema.pre("save", async function (next) {
   if (!this.memberId && this.isNew) {
     let nextSeq = 1;
     try {
+      // Sort by createdAt descending (string sort on memberId is unreliable for padded ints)
       const lastUser = await mongoose.model("User")
         .findOne({ memberId: { $exists: true, $ne: null } }, "memberId")
-        .sort({ memberId: -1 });
-      
+        .sort({ createdAt: -1 });
+
       if (lastUser && lastUser.memberId && lastUser.memberId.startsWith("KOL-")) {
         const lastSeq = parseInt(lastUser.memberId.replace("KOL-", ""), 10);
         if (!isNaN(lastSeq)) {
@@ -87,9 +92,9 @@ UserSchema.pre("save", async function (next) {
         nextSeq = count + 1;
       }
     } catch (err) {
-      console.error("[User Model] Error generating memberId:", err);
-      // Fallback
-      nextSeq = Date.now() % 100000; 
+      logger.error("[User Model] Error generating memberId:", err);
+      // Fallback to timestamp-based suffix
+      nextSeq = Date.now() % 100000;
     }
     this.memberId = `KOL-${String(nextSeq).padStart(5, "0")}`;
   }
